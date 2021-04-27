@@ -6,7 +6,7 @@ class DataSource<T> extends DataTableSource {
 
   @override
   int get selectedRowCount => selected.length;
-  final Set selected = {};
+  final Set<int> selected = {};
 
   String _search = '';
   String get search => this._search;
@@ -25,17 +25,27 @@ class DataSource<T> extends DataTableSource {
       cells = [DataCell(Text(item.toString()))];
     }
     return DataRow(
-      selected: selected.contains(item.toString()),
+      selected: selected.contains(index),
       cells: cells,
       onSelectChanged: (val) {
         if (val) {
-          selected.add((item.toString()));
+          selected.add(index);
         } else {
-          selected.remove((item.toString()));
+          selected.remove(index);
         }
         this.notifyListeners();
       },
     );
+  }
+
+  void clearSelection([int skipIndex]) {
+    final _past = [...selected];
+    for (final idx in _past) {
+      if (idx == skipIndex) continue;
+      this.getRow(idx).onSelectChanged(false);
+      this.selected.remove(idx);
+    }
+    this.notifyListeners();
   }
 
   @override

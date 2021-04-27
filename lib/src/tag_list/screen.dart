@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'source.dart';
 
-class TaggedDataView extends StatefulWidget {
+class TaggedDataView<T> extends StatefulWidget {
   const TaggedDataView({
     Key key,
     @required this.dataSource,
@@ -10,14 +10,14 @@ class TaggedDataView extends StatefulWidget {
     this.listViewWidth = 280,
   }) : super(key: key);
 
-  final TaggedDataTableSource dataSource;
+  final TaggedDataTableSource<T> dataSource;
   final double listViewWidth, tagViewWidth;
 
   @override
-  _TaggedDataViewState createState() => _TaggedDataViewState();
+  _TaggedDataViewState<T> createState() => _TaggedDataViewState<T>();
 }
 
-class _TaggedDataViewState extends State<TaggedDataView> {
+class _TaggedDataViewState<T> extends State<TaggedDataView<T>> {
   @override
   void initState() {
     super.initState();
@@ -44,111 +44,188 @@ class _TaggedDataViewState extends State<TaggedDataView> {
         .toList();
     final allTags = [...folders, ...other].toSet().toList();
     allTags.sort();
-    return Container(
-      child: Row(
+    final emptyBuilder = () {
+      return Scaffold(
+        appBar: AppBar(
+          centerTitle: false,
+          title: Text('Details'),
+        ),
+        body: Center(
+          child: Text('No Item Selected'),
+        ),
+      );
+    };
+    final detailBuilder = (dynamic item) {
+      return Scaffold(
+        appBar: AppBar(
+          centerTitle: false,
+          title: Text('Details'),
+        ),
+        body: Center(
+          child: Text(item.toString()),
+        ),
+      );
+    };
+    final tagsBuilder = (Function(BuildContext context) onTap) {
+      return Scrollbar(
+        child: ListView(
+          children: [
+            ListTile(
+              selected: widget.dataSource.selectedTag == null,
+              onTap: () {
+                widget.dataSource.selectTag(null);
+                onTap(context);
+              },
+              leading: Icon(Icons.list),
+              title: Text('all'),
+            ),
+            for (var i = 0; i < allTags.length; i++)
+              buildTag(allTags[i], folders.contains(allTags[i]), onTap),
+          ],
+        ),
+      );
+    };
+    final listBuilder = (Function(int index) onTap) {
+      return Column(
         children: [
           Container(
-            width: widget.tagViewWidth,
-            child: Scrollbar(
-              child: ListView(
-                children: [
-                  ListTile(
-                    selected: widget.dataSource.selectedTag == null,
-                    onTap: () => widget.dataSource.selectTag(null),
-                    leading: Icon(Icons.list),
-                    title: Text('All'),
-                  ),
-                  for (var i = 0; i < allTags.length; i++)
-                    buildTag(allTags[i], folders.contains(allTags[i])),
-                ],
-              ),
+            padding: const EdgeInsets.symmetric(
+              horizontal: 8,
+              vertical: 4,
             ),
-          ),
-          Container(
-            width: widget.listViewWidth,
-            child: Column(
+            child: Row(
               children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          decoration: InputDecoration(
-                            border: InputBorder.none,
-                            hintText: 'Search',
-                            prefixIcon: Icon(Icons.search),
-                          ),
-                          onChanged: (val) {
-                            widget.dataSource.onSearch(val);
-                            if (mounted) setState(() {});
-                          },
-                        ),
-                      )
-                    ],
-                  ),
-                ),
                 Expanded(
-                  child: Scrollbar(
-                    child: ListView.builder(
-                      itemCount: source.rowsForTag.length,
-                      itemBuilder: (context, index) {
-                        final item = source.rowsForTag[index];
-                        return ListTile(
-                          title: item.cells[0].child,
-                          subtitle: item.cells[1].child,
-                          selected: item.selected,
-                          onTap: () => item.onSelectChanged(!item.selected),
-                        );
-                      },
+                  child: TextField(
+                    decoration: InputDecoration(
+                      border: InputBorder.none,
+                      hintText: 'Search',
+                      prefixIcon: Icon(Icons.search),
                     ),
+                    onChanged: (val) {
+                      widget.dataSource.onSearch(val);
+                      if (mounted) setState(() {});
+                    },
                   ),
-                ),
+                )
               ],
             ),
           ),
-          VerticalDivider(width: 0),
           Expanded(
-            child: widget.dataSource.selectedRowCount == 0
-                ? Center(
-                    child: Text('No Item Selected'),
-                  )
-                : Center(
-                    child: Text(widget.dataSource.selected.last.toString()),
-                  ),
+            child: Scrollbar(
+              child: ListView.builder(
+                itemCount: source.rowsForTag.keys.length,
+                itemBuilder: (context, index) {
+                  final key = source.rowsForTag.keys.toList()[index];
+                  final row = source.rowsForTag[key];
+                  return ListTile(
+                    title: row.cells[0].child,
+                    subtitle: row.cells[1].child,
+                    selected: row.selected,
+                    onTap: () => onTap(key),
+                  );
+                },
+              ),
+            ),
           ),
         ],
-      ),
+      );
+    };
+    return LayoutBuilder(
+      builder: (context, dimens) {
+        if (dimens.maxWidth >= 720) {
+          return Row(
+            children: [
+              Container(
+                width: widget.tagViewWidth + widget.listViewWidth,
+                child: Scaffold(
+                  appBar: AppBar(
+                    centerTitle: false,
+                    title: Text(widget.dataSource.selectedTag ?? 'all'),
+                  ),
+                  body: Row(
+                    children: [
+                      Container(
+                        width: widget.tagViewWidth,
+                        child: tagsBuilder((context) => {}),
+                      ),
+                      Container(
+                        width: widget.listViewWidth,
+                        child: listBuilder((index) {
+                          final row = widget.dataSource.getRow(index);
+                          row.onSelectChanged(!row.selected);
+                          widget.dataSource.clearSelection(index);
+                        }),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              VerticalDivider(width: 0),
+              Expanded(
+                child: widget.dataSource.selectedRowCount == 0
+                    ? emptyBuilder()
+                    : detailBuilder(widget.dataSource.selected.last),
+              ),
+            ],
+          );
+        }
+        return Scaffold(
+          appBar: AppBar(
+            centerTitle: false,
+            title: Text(widget.dataSource.selectedTag ?? 'all'),
+          ),
+          drawer: Drawer(
+            child: tagsBuilder((context) {
+              Navigator.of(context).maybePop();
+            }),
+          ),
+          body: listBuilder((index) {
+            final item = widget.dataSource.items[index];
+            Navigator.of(context).push(MaterialPageRoute(
+              builder: (_) => detailBuilder(item),
+            ));
+          }),
+        );
+      },
     );
   }
 
-  Widget buildTag(String tag, [bool folder = false]) {
+  Widget buildTag(
+    String tag,
+    bool folder,
+    Function(BuildContext context) onTap,
+  ) {
     if (folder) {
-      return TagFolder(
+      return TagFolder<T>(
         dataSource: widget.dataSource,
         tag: tag,
       );
     }
-    return ListTile(
-      selected: widget.dataSource.selectedTag == tag,
-      onTap: () => widget.dataSource.selectTag(tag),
-      leading: widget.dataSource.getIconForTag(tag),
-      title: Text(tag),
+    return Builder(
+      builder: (context) {
+        return ListTile(
+          selected: widget.dataSource.selectedTag == tag,
+          onTap: () {
+            widget.dataSource.selectTag(tag);
+            onTap(context);
+          },
+          leading: widget.dataSource.getIconForTag(tag),
+          title: Text(tag),
+        );
+      },
     );
   }
 }
 
-class TagFolder extends StatefulWidget {
+class TagFolder<T> extends StatefulWidget {
   const TagFolder({
     Key key,
     @required this.tag,
     @required this.dataSource,
   }) : super(key: key);
   final String tag;
-  final TaggedDataTableSource dataSource;
+  final TaggedDataTableSource<T> dataSource;
 
   @override
   _TagFolderState createState() => _TagFolderState();

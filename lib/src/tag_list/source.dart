@@ -60,22 +60,27 @@ abstract class TaggedDataTableSource<T> extends DataSource<T> {
     return _tags;
   }
 
-  List<DataRow> get rowsForTag {
-    final rows = <DataRow>{};
+  Map<int, DataRow> get rowsForTag {
+    final _results = <int, DataRow>{};
     for (var i = 0; i < rowCount; i++) {
       final tags = getTagsForRow(i);
-      if (_selected == null || tags.contains(_selected)) {
-        rows.add(getRow(i));
+      if (_selected == null) {
+        _results[i] = getRow(i);
+      } else {
+        for (final tag in tags) {
+          if (tag.contains(_selected)) {
+            _results[i] = getRow(i);
+          }
+        }
       }
     }
     final search = this.search.toLowerCase();
-    if (search.isEmpty) return rows.toList();
-    final _results = <DataRow>[];
+    if (search.isEmpty) return _results;
+    _results.clear();
     for (var i = 0; i < rowCount; i++) {
       final item = this.items[i];
       if (item.toString().toLowerCase().contains(search)) {
-        final row = this.getRow(i);
-        _results.add(row);
+        _results[i] = getRow(i);
       }
     }
     return _results;
