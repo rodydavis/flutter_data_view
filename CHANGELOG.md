@@ -1,3 +1,6 @@
-## [0.0.1] - TODO: Add release date.
+## 0.0.1
 
-* TODO: Describe initial release.
+* Added DataSource
+* Added TaggedDataTableSource
+* Added TaggedDataView
+* Added Example

@@ -44,9 +44,14 @@ class HomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      // appBar: AppBar(title: Text('Example')),
-      body: TaggedDataView(dataSource: _dataSource),
+    return TaggedDataView(
+      dataSource: _dataSource,
+      actions: [
+        IconButton(
+          icon: Icon(Icons.add),
+          onPressed: () {},
+        ),
+      ],
     );
   }
 }

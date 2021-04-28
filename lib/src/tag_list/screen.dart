@@ -8,10 +8,16 @@ class TaggedDataView<T> extends StatefulWidget {
     @required this.dataSource,
     this.tagViewWidth = 220,
     this.listViewWidth = 280,
+    this.emptyBuilder,
+    this.detailBuilder,
+    this.actions,
   }) : super(key: key);
 
   final TaggedDataTableSource<T> dataSource;
   final double listViewWidth, tagViewWidth;
+  final Widget Function(BuildContext context) emptyBuilder;
+  final Widget Function(BuildContext context, T item, int index) detailBuilder;
+  final List<Widget> actions;
 
   @override
   _TaggedDataViewState<T> createState() => _TaggedDataViewState<T>();
@@ -45,6 +51,9 @@ class _TaggedDataViewState<T> extends State<TaggedDataView<T>> {
     final allTags = [...folders, ...other].toSet().toList();
     allTags.sort();
     final emptyBuilder = () {
+      if (widget?.emptyBuilder != null) {
+        return widget.emptyBuilder(context);
+      }
       return Scaffold(
         appBar: AppBar(
           centerTitle: false,
@@ -55,7 +64,11 @@ class _TaggedDataViewState<T> extends State<TaggedDataView<T>> {
         ),
       );
     };
-    final detailBuilder = (dynamic item) {
+    final detailBuilder = (int index) {
+      final T item = widget.dataSource.items[index];
+      if (widget?.detailBuilder != null) {
+        return widget.detailBuilder(context, item, index);
+      }
       return Scaffold(
         appBar: AppBar(
           centerTitle: false,
@@ -142,6 +155,7 @@ class _TaggedDataViewState<T> extends State<TaggedDataView<T>> {
                   appBar: AppBar(
                     centerTitle: false,
                     title: Text(widget.dataSource.selectedTag ?? 'all'),
+                    actions: widget.actions ?? [],
                   ),
                   body: Row(
                     children: [
@@ -174,6 +188,7 @@ class _TaggedDataViewState<T> extends State<TaggedDataView<T>> {
           appBar: AppBar(
             centerTitle: false,
             title: Text(widget.dataSource.selectedTag ?? 'all'),
+            actions: widget.actions ?? [],
           ),
           drawer: Drawer(
             child: tagsBuilder((context) {
@@ -181,9 +196,8 @@ class _TaggedDataViewState<T> extends State<TaggedDataView<T>> {
             }),
           ),
           body: listBuilder((index) {
-            final item = widget.dataSource.items[index];
             Navigator.of(context).push(MaterialPageRoute(
-              builder: (_) => detailBuilder(item),
+              builder: (_) => detailBuilder(index),
             ));
           }),
         );
